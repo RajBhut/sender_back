@@ -8,12 +8,12 @@ dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
+let frontend_url = process.env.FRONTEND_URL;
 const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: ["http://localhost:5173", process.env.FRONTEND_URL],
+    origin: ["http://localhost:5173", frontend_url],
     methods: ["GET", "POST"],
   },
 });
