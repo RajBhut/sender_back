@@ -16,17 +16,50 @@ const frontend_url = process.env.FRONTEND_URL || "http://localhost:5173";
 const allowed_origins = [
   "http://localhost:5173",
   "http://localhost:3000",
+  "https://localhost:5173",
+  "https://localhost:3000",
   frontend_url,
   "http://sender.rajb.tech",
-].filter(Boolean); // Remove any undefined values
+  "https://sender.rajb.tech",
+  /\.rajb\.tech$/,
+  /\.netlify\.app$/,
+  /\.vercel\.app$/,
+  /\.coolify\.app$/,
+  /localhost:\d+$/,
+];
 
 const app = express();
 
-// Add CORS middleware
+// Add CORS middleware with logging
 app.use(
   cors({
-    origin: allowed_origins,
-    methods: ["GET", "POST"],
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+
+      console.log("CORS origin check:", origin);
+
+      // Check if origin is in allowed list
+      const isAllowed = allowed_origins.some((allowedOrigin) => {
+        if (typeof allowedOrigin === "string") {
+          return allowedOrigin === origin;
+        } else if (allowedOrigin instanceof RegExp) {
+          return allowedOrigin.test(origin);
+        }
+        return false;
+      });
+
+      console.log("Origin allowed:", isAllowed);
+
+      if (isAllowed) {
+        callback(null, true);
+      } else {
+        console.log("CORS blocked origin:", origin);
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
   })
 );
@@ -34,10 +67,37 @@ app.use(
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: allowed_origins,
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+
+      console.log("Socket.IO CORS origin check:", origin);
+
+      // Check if origin is in allowed list
+      const isAllowed = allowed_origins.some((allowedOrigin) => {
+        if (typeof allowedOrigin === "string") {
+          return allowedOrigin === origin;
+        } else if (allowedOrigin instanceof RegExp) {
+          return allowedOrigin.test(origin);
+        }
+        return false;
+      });
+
+      console.log("Socket.IO Origin allowed:", isAllowed);
+
+      if (isAllowed) {
+        callback(null, true);
+      } else {
+        console.log("Socket.IO CORS blocked origin:", origin);
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     methods: ["GET", "POST"],
+    allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
   },
+  allowEIO3: true, // Allow Engine.IO v3 clients
+  transports: ["polling", "websocket"],
 });
 
 if (process.env.NODE_ENV === "production") {
@@ -48,10 +108,38 @@ if (process.env.NODE_ENV === "production") {
   });
 }
 
+// Add a test endpoint for CORS
+app.get("/test", (req, res) => {
+  console.log("Test endpoint hit from origin:", req.headers.origin);
+  res.json({
+    message: "CORS test successful",
+    origin: req.headers.origin,
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// Health check endpoint
+app.get("/health", (req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
 const rooms = new Map();
 
+// Add error handling for socket.io
+io.engine.on("connection_error", (err) => {
+  console.log("Connection error:", err.req); // the request object
+  console.log("Error code:", err.code); // the error code, for example 1
+  console.log("Error message:", err.message); // the error message, for example "Session ID unknown"
+  console.log("Error context:", err.context); // some additional error context
+});
+
 io.on("connection", (socket) => {
-  console.log("User connected:", socket.id);
+  console.log(
+    "User connected:",
+    socket.id,
+    "from origin:",
+    socket.handshake.headers.origin
+  );
 
   socket.on("create-room", () => {
     const roomId = Math.random().toString(36).substring(7);
