@@ -17,6 +17,7 @@ const allowed_origins = [
   "http://localhost:5173",
   "http://localhost:3000",
   frontend_url,
+  "http://sender.rajb.tech",
 ].filter(Boolean); // Remove any undefined values
 
 const app = express();
