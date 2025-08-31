@@ -3,18 +3,39 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
+import cors from "cors";
 import dotenv from "dotenv";
+
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-let frontend_url = process.env.FRONTEND_URL;
+
+// Get frontend URL from environment, fallback to localhost for development
+const frontend_url = process.env.FRONTEND_URL || "http://localhost:5173";
+const allowed_origins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  frontend_url,
+].filter(Boolean); // Remove any undefined values
+
 const app = express();
+
+// Add CORS middleware
+app.use(
+  cors({
+    origin: allowed_origins,
+    methods: ["GET", "POST"],
+    credentials: true,
+  })
+);
+
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: ["http://localhost:5173", frontend_url],
+    origin: allowed_origins,
     methods: ["GET", "POST"],
+    credentials: true,
   },
 });
 

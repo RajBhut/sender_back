@@ -1,0 +1,17 @@
+{
+  "name": "sender_back",
+  "version": "1.0.0",
+  "description": "WebRTC signaling server",
+  "scripts": {
+    "start": "cd server && npm start",
+    "dev": "cd server && node index.js",
+    "install-server": "cd server && npm install"
+  },
+  "keywords": [
+    "webrtc",
+    "signaling",
+    "socket.io"
+  ],
+  "author": "",
+  "license": "ISC"
+}
